@@ -1353,7 +1353,6 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["sni"] >>= host;
             singleproxy["alpn"][0] >>= alpn;
 
-            scv = singleproxy["insecure"].IsDefined() ? singleproxy["insecure"].as<std::string>() == "1" : false;
             hysteria2Construct(node, group, ps, server, port, password, host, up, down, alpn, obfsParam, obfsPassword, udp, tfo, scv);
             break;
         default:
