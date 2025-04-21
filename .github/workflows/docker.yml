@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  REGISTRY_IMAGE: ghcr.io/metacubex/subconverter
+  REGISTRY_IMAGE: docker.io/keyonjeanli78/subconverter  # Docker Hub 仓库
 
 jobs:
   build:
@@ -32,7 +32,7 @@ jobs:
         run: |
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV    
-               
+
       - name: Checkout base
         uses: actions/checkout@v4
         with:
@@ -50,12 +50,12 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: login to ghcr.io
+      - name: login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub 用户名
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub 密码
 
       - name: Get commit SHA
         if: github.ref == 'refs/heads/master'
@@ -112,19 +112,19 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: login to ghcr.io
+      - name: login to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub 用户名
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub 密码
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)      
-    
+
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
