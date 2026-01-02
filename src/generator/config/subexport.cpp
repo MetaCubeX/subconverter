@@ -781,6 +781,8 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
         if(!x.DisableUdp.is_undef())
             singlegroup["disable-udp"] = x.DisableUdp.get();
 
+        singlegroup["max-failed-times"] = x.MaxFailedTimes;
+
         for(const auto& y : x.Proxies)
             groupGenerate(y, nodelist, filtered_nodelist, true, ext);
 
