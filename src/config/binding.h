@@ -83,7 +83,7 @@ namespace toml
             conf.Timeout = find_or(v, "timeout", 5);
             conf.Proxies = find_or<StrArray>(v, "rule", {});
             conf.UsingProvider = find_or<StrArray>(v, "use", {});
-            conf.MaxFailedTimes = find_or(v, "max-failed-times", 5);
+            conf.MaxFailedTimes = find_or(v, "max_failed_times", 5);
             if(conf.Proxies.empty() && conf.UsingProvider.empty())
                 throw serialization_error(format_error("Proxy Group must contains at least one of proxy match rule or provider!", v.location(), "here"), v.location());
             if(v.contains("disable-udp"))

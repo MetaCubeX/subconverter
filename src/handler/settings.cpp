@@ -191,7 +191,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
         object["interval"] >>= interval;
         object["tolerance"] >>= tolerance;
         object["timeout"] >>= timeout;
-        object["max-failed-times"] >>= max_failed_times;
+        object["max_failed_times"] >>= max_failed_times;
         object["strategy"] >>= strategy;
         for(std::size_t j = 0; j < object["rule"].size(); j++)
             tempArray.emplace_back(safe_as<std::string>(object["rule"][j]));
