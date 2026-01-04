@@ -17,7 +17,8 @@ enum class ProxyGroupType
 enum class BalanceStrategy
 {
     ConsistentHashing,
-    RoundRobin
+    RoundRobin,
+    StickySessions
 };
 
 struct ProxyGroupConfig
@@ -30,6 +31,7 @@ struct ProxyGroupConfig
     Integer Interval = 0;
     Integer Timeout = 0;
     Integer Tolerance = 0;
+    Integer MaxFailedTimes = 5;
     BalanceStrategy Strategy = BalanceStrategy::ConsistentHashing;
     Boolean Lazy;
     Boolean DisableUdp;
@@ -57,6 +59,7 @@ struct ProxyGroupConfig
         {
             case BalanceStrategy::ConsistentHashing: return "consistent-hashing";
             case BalanceStrategy::RoundRobin: return "round-robin";
+            case BalanceStrategy::StickySessions: return "sticky-sessions";
         }
         return "";
     }

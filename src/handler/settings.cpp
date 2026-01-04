@@ -182,6 +182,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
             continue;
         }
         std::string url = "http://www.gstatic.com/generate_204", interval = "300", tolerance, timeout;
+        std::string max_failed_times, strategy;
         object["name"] >>= name;
         object["type"] >>= type;
         tempArray.emplace_back(name);
@@ -190,8 +191,14 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
         object["interval"] >>= interval;
         object["tolerance"] >>= tolerance;
         object["timeout"] >>= timeout;
+        object["max_failed_times"] >>= max_failed_times;
+        object["strategy"] >>= strategy;
         for(std::size_t j = 0; j < object["rule"].size(); j++)
             tempArray.emplace_back(safe_as<std::string>(object["rule"][j]));
+        if(!max_failed_times.empty())
+            tempArray.emplace_back("!!MAX_FAILED_TIMES=" + max_failed_times);
+        if(!strategy.empty())
+            tempArray.emplace_back("!!STRATEGY=" + strategy);
         switch(hash_(type))
         {
         case "select"_hash:
