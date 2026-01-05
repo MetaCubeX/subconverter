@@ -80,6 +80,7 @@ namespace toml
             conf.Timeout = find_or(v, "timeout", 5);
             conf.Proxies = find_or<StrArray>(v, "rule", {});
             conf.UsingProvider = find_or<StrArray>(v, "use", {});
+            conf.Filter = find_or<String>(v, "filter", "");
             if(conf.Proxies.empty() && conf.UsingProvider.empty())
                 throw serialization_error(format_error("Proxy Group must contains at least one of proxy match rule or provider!", v.location(), "here"), v.location());
             if(v.contains("disable-udp"))
@@ -253,6 +254,10 @@ namespace INIBinding
                         string_array list = split(vArray[i].substr(11), ",");
                         conf.UsingProvider.reserve(conf.UsingProvider.size() + list.size());
                         std::move(list.begin(), list.end(), std::back_inserter(conf.UsingProvider));
+                    }
+                    else if(startsWith(vArray[i], "!!FILTER:")) 
+                    {
+                        conf.Filter = vArray[i].substr(9); // Remove "!!FILTER:" prefix
                     }
                     else
                         conf.Proxies.emplace_back(std::move(vArray[i]));

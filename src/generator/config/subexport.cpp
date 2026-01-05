@@ -793,6 +793,9 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
         }
         if(!filtered_nodelist.empty())
             singlegroup["proxies"] = filtered_nodelist;
+        
+        if(!x.Filter.empty())
+            singlegroup["filter"] = x.Filter;
         if(group_block)
             singlegroup.SetStyle(YAML::EmitterStyle::Block);
         else
