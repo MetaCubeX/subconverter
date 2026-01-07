@@ -11,4 +11,6 @@ std::string urlSafeBase64Reverse(const std::string &encoded_string);
 std::string urlSafeBase64Decode(const std::string &encoded_string);
 std::string urlSafeBase64Encode(const std::string &string_to_encode);
 
+bool isBase64(const std::string &string_to_check);
+
 #endif // BASE64_H_INCLUDED

@@ -3222,7 +3222,10 @@ void explodeSub(std::string sub, std::vector<Proxy> &nodes)
     //try to parse as normal subscription
     if(!processed)
     {
-        sub = urlSafeBase64Decode(sub);
+        if(isBase64(sub))
+        {
+            sub = urlSafeBase64Decode(sub);
+        }
         if(regFind(sub, "(vmess|shadowsocks|http|trojan)\\s*?="))
         {
             if(explodeSurge(sub, nodes))
