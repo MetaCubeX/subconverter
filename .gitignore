@@ -4,3 +4,11 @@ cmake-build-debug
 .idea
 base/cache
 build
+build_root/
+deps_install/
+venv/
+subconverter_macos/
+scripts/yaml-cpp/
+scripts/quickjspp/
+scripts/libcron/
+scripts/toml11/
