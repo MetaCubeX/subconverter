@@ -5,6 +5,25 @@ custom:
   proxy_groups:
   - {import: snippets/groups_forcerule.txt}
 
+  # Example of using filter in proxy_groups
+  - name: "Hong Kong"
+    type: "select"
+    use:
+      - "Subscription 1"
+    filter: "(?i)港|hk|hongkong|hong kong"
+    rule:
+      - "[]Hong Kong Auto"
+
+  - name: "Japan"
+    type: "url-test"
+    use:
+      - "Subscription 1"
+    filter: "(?i)日本|jp|japan"
+    rule:
+      - "[]Japan Auto"
+    url: "http://www.gstatic.com/generate_204"
+    interval: 300
+
 #  rulesets:
 #  - {import: snippets/ruleset_remote.txt}
 
