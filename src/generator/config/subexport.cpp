@@ -1637,7 +1637,7 @@ void proxyToQuanX(std::vector<Proxy> &nodes, INIReader &ini, std::vector<Ruleset
 
         processRemark(x.Remark, remarks_list);
 
-        std::string &hostname = x.Hostname, &method = x.EncryptMethod, &id = x.UserId, &transproto = x.TransferProtocol, &host = x.Host, &path = x.Path, &password = x.Password, &plugin = x.Plugin, &pluginopts = x.PluginOption, &protocol = x.Protocol, &protoparam = x.ProtocolParam, &obfs = x.OBFS, &obfsparam = x.OBFSParam, &username = x.Username;
+        std::string &hostname = x.Hostname, &method = x.EncryptMethod, &id = x.UserId, &transproto = x.TransferProtocol, &host = x.Host, &path = x.Path, &password = x.Password, &plugin = x.Plugin, &pluginopts = x.PluginOption, &protocol = x.Protocol, &protoparam = x.ProtocolParam, &obfs = x.OBFS, &obfsparam = x.OBFSParam, &username = x.Username, &uuid = x.UUID, &sni = x.SNI, &publickey = x.PublicKey, &shortid = x.ShortID, &flow = x.Flow;
         std::string port = std::to_string(x.Port);
         bool &tlssecure = x.TLSSecure;
 
@@ -1756,6 +1756,75 @@ void proxyToQuanX(std::vector<Proxy> &nodes, INIReader &ini, std::vector<Ruleset
                     proxyStr += ", over-tls=false";
                 }
             }
+            break;
+        case ProxyType::VLESS:
+            method = "none";
+            proxyStr = "vless = " + hostname + ":" + port + ", method=" + method + ", password=" + uuid;
+            if(tlssecure && !tls13.is_undef())
+                proxyStr += ", tls13=" + std::string(tls13 ? "true" : "false");
+            if(transproto == "ws")
+            {
+                if(tlssecure)
+                    proxyStr += ", obfs=wss";
+                else
+                    proxyStr += ", obfs=ws";
+
+                if(tlssecure && !publickey.empty() && sni.empty())
+                    writeLog(0, "Quantumult X vless reality: public key present but SNI missing; skipping reality output.", LOG_LEVEL_WARNING);
+                if(tlssecure && !shortid.empty() && publickey.empty())
+                    writeLog(0, "Quantumult X vless reality: shortid present but public key missing; skipping reality output.", LOG_LEVEL_WARNING);
+
+                if(tlssecure && !publickey.empty() && !sni.empty())
+                    proxyStr += ", obfs-host=" + sni;
+                else if(!host.empty())
+                    proxyStr += ", obfs-host=" + host;
+                    
+                if(!path.empty())
+                    proxyStr += ", obfs-uri=" + path;
+
+                if(tlssecure && !publickey.empty() && !sni.empty())
+                {
+                    proxyStr += ", reality-base64-pubkey=" + publickey;
+                    if(!shortid.empty())
+                        proxyStr += ", reality-hex-shortid=" + shortid;
+                }
+            }
+            else if(transproto == "http")
+            {
+                proxyStr += ", obfs=http";
+                if(!host.empty())
+                    proxyStr += ", obfs-host=" + host;
+                if(!path.empty())
+                        proxyStr += ", obfs-uri=" + path;
+            }
+            else if(transproto == "tcp")
+            {
+                if(tlssecure){
+                    proxyStr += ", obfs=over-tls";
+
+                    if(!publickey.empty() && sni.empty())
+                        writeLog(0, "Quantumult X vless reality: public key present but SNI missing; skipping reality output.", LOG_LEVEL_WARNING);
+                    if(!shortid.empty() && publickey.empty())
+                        writeLog(0, "Quantumult X vless reality: shortid present but public key missing; skipping reality output.", LOG_LEVEL_WARNING);
+
+                    if(!publickey.empty() && !sni.empty()){
+                        proxyStr += ", obfs-host=" + sni;
+                        proxyStr += ", reality-base64-pubkey=" + publickey;
+                        if(!shortid.empty())
+                            proxyStr += ", reality-hex-shortid=" + shortid;
+                        if(!flow.empty())
+                            proxyStr += ", vless-flow=" + flow;
+                    }
+
+                }
+            }
+            else if(tlssecure)
+            {
+                proxyStr += ", obfs=over-tls";
+                if(!sni.empty())
+                    proxyStr += ", obfs-host=" + sni;
+            }
+                
             break;
         default:
             continue;
