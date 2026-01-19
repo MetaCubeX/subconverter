@@ -47,6 +47,9 @@ namespace toml
                 case "round-robin"_hash:
                     conf.Strategy = BalanceStrategy::RoundRobin;
                     break;
+                case "sticky-sessions"_hash:
+                    conf.Strategy = BalanceStrategy::StickySessions;
+                    break;
                 }
                 if(v.contains("persistent"))
                     conf.Persistent = find_or(v, "persistent", conf.Persistent.get());
@@ -80,6 +83,7 @@ namespace toml
             conf.Timeout = find_or(v, "timeout", 5);
             conf.Proxies = find_or<StrArray>(v, "rule", {});
             conf.UsingProvider = find_or<StrArray>(v, "use", {});
+            conf.MaxFailedTimes = find_or(v, "max_failed_times", 5);
             if(conf.Proxies.empty() && conf.UsingProvider.empty())
                 throw serialization_error(format_error("Proxy Group must contains at least one of proxy match rule or provider!", v.location(), "here"), v.location());
             if(v.contains("disable-udp"))
@@ -273,6 +277,26 @@ namespace INIBinding
                         string_array list = split(vArray[i].substr(11), ",");
                         conf.UsingProvider.reserve(conf.UsingProvider.size() + list.size());
                         std::move(list.begin(), list.end(), std::back_inserter(conf.UsingProvider));
+                    }
+                    else if(startsWith(vArray[i], "!!MAX_FAILED_TIMES="))
+                    {
+                        conf.MaxFailedTimes = to_int(vArray[i].substr(19), 0);
+                    }
+                    else if(startsWith(vArray[i], "!!STRATEGY="))
+                    {
+                        std::string strategy = vArray[i].substr(11);
+                        switch(hash_(strategy))
+                        {
+                        case "consistent-hashing"_hash:
+                            conf.Strategy = BalanceStrategy::ConsistentHashing;
+                            break;
+                        case "round-robin"_hash:
+                            conf.Strategy = BalanceStrategy::RoundRobin;
+                            break;
+                        case "sticky-sessions"_hash:
+                            conf.Strategy = BalanceStrategy::StickySessions;
+                            break;
+                        }
                     }
                     else
                         conf.Proxies.emplace_back(std::move(vArray[i]));
