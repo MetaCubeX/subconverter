@@ -171,7 +171,7 @@ void hysteriaConstruct(
     if (!up.empty())
     {
         if (up.length() > 4 && up.find("bps") == up.length() - 3)
-        
+
             node.Up = up;
         else if (to_int(up))
         {
@@ -212,13 +212,13 @@ void hysteriaConstruct(
 }
 
 void hysteria2Construct(
-    Proxy &node, 
+    Proxy &node,
     const std::string &group,
     const std::string &remarks,
-    const std::string &server, 
+    const std::string &server,
     const std::string &port,
     const std::string &ports,
-    const std::string &up, 
+    const std::string &up,
     const std::string &down,
     const std::string &password,
     const std::string &obfs,
@@ -229,10 +229,10 @@ void hysteria2Construct(
     const std::string &ca,
     const std::string &ca_str,
     const std::string &cwnd,
-    const std::string &hop_interval, 
+    const std::string &hop_interval,
     tribool udp,
-    tribool tfo, 
-    tribool scv, 
+    tribool tfo,
+    tribool scv,
     const std::string &underlying_proxy
 ) {
     commonConstruct(node, ProxyType::Hysteria2, group, remarks, server, port, udp, tfo, scv, tribool(), underlying_proxy);
@@ -1259,7 +1259,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
         singleproxy["name"] >>= ps;
         singleproxy["server"] >>= server;
         singleproxy["port"] >>= port;
-        
+
         underlying_proxy.clear();
         // Use 'dialer-proxy' or 'underlying-proxy' to set underlying proxy
         if (singleproxy["dialer-proxy"].IsDefined())
@@ -1272,7 +1272,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
         udp = safe_as<std::string>(singleproxy["udp"]);
         tfo = safe_as<std::string>(singleproxy["fast-open"]);
         scv = safe_as<std::string>(singleproxy["skip-cert-verify"]);
-        
+
         // Read common new parameters
         singleproxy["ip-version"] >>= ip_version;
         singleproxy["client-fingerprint"] >>= client_fingerprint;
@@ -1283,7 +1283,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             ech_enable = safe_as<std::string>(singleproxy["ech-opts"]["enable"]);
             singleproxy["ech-opts"]["config"] >>= ech_config;
         }
-        
+
         switch(hash_(proxytype))
         {
         case "vmess"_hash:
@@ -1329,7 +1329,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             tls = safe_as<std::string>(singleproxy["tls"]) == "true" ? "tls" : "";
 
             vmessConstruct(node, group, ps, server, port, "", id, aid, net, cipher, path, host, edge, tls, sni, udp, tfo, scv, tribool(), underlying_proxy);
-            
+
             // Assign new parameters to node for Vmess
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1407,7 +1407,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
                     break;
             }
             tls = safe_as<std::string>(singleproxy["tls"]) == "true" ? "tls" : "";
-            
+
             vlessConstruct(node, group, ps, server, port, uuid, sni, alpn, type, net, mode, host, path, fingerprint, flow, xtls, public_key, short_id, client_fingerprint, udp, tfo, scv, underlying_proxy);
             node.TLSSecure = tls == "tls";
             // Assign new parameters to node for VLESS
@@ -1427,7 +1427,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             }
             node.XUDP = safe_as<std::string>(singleproxy["xudp"]);
             node.PacketAddr = safe_as<std::string>(singleproxy["packet-addr"]);
-            
+
             // Add WebSocket enhanced parameters support for VLESS
             if(net == "ws")
             {
@@ -1450,12 +1450,12 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
 
             singleproxy["cipher"] >>= cipher;
             singleproxy["password"] >>= password;
-            
+
             // Shadowsocks UDP-over-TCP options - only assign if explicitly provided
             node.UdpOverTcp = safe_as<std::string>(singleproxy["udp-over-tcp"]);
             if(singleproxy["udp-over-tcp-version"].IsDefined())
                 node.UdpOverTcpVersion = to_int(safe_as<std::string>(singleproxy["udp-over-tcp-version"]));
-            
+
             // Read SMUX configuration for Shadowsocks
             if(singleproxy["smux"].IsDefined())
             {
@@ -1471,7 +1471,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
                 smux_statistic = safe_as<std::string>(singleproxy["smux"]["statistic"]);
                 smux_only_tcp = safe_as<std::string>(singleproxy["smux"]["only-tcp"]);
             }
-            
+
             if(singleproxy["plugin"].IsDefined())
             {
                 switch(hash_(safe_as<std::string>(singleproxy["plugin"])))
@@ -1536,7 +1536,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             }
 
             ssConstruct(node, group, ps, server, port, password, cipher, plugin, pluginopts, udp, tfo, scv,  tribool(), underlying_proxy);
-            
+
             // Assign new parameters to node
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1588,7 +1588,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["tls"] >>= tls;
 
             httpConstruct(node, group, ps, server, port, user, password, tls == "true", tfo, scv, tribool(), underlying_proxy);
-            
+
             // Assign new parameters to node for HTTP
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1615,7 +1615,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             }
 
             trojanConstruct(node, group, ps, server, port, password, net, host, path, true, udp, tfo, scv, tribool(),  underlying_proxy);
-            
+
             // Assign new parameters to node for Trojan
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1630,7 +1630,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
                 node.TrojanSsMethod = trojan_ss_method;
                 node.TrojanSsPassword = trojan_ss_password;
             }
-            
+
             // Add WebSocket enhanced parameters support for Trojan
             if(net == "ws")
             {
@@ -1698,7 +1698,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["hop-interval"] >>= hop_interval;
 
             hysteriaConstruct(node, group, ps, server, port, ports, protocol, obfs_protocol, up, up_speed, down, down_speed, auth, auth_str, obfs, sni, fingerprint, ca, ca_str, recv_window_conn, recv_window, disable_mtu_discovery, hop_interval, alpn, tfo, scv, underlying_proxy);
-            
+
             // Assign new parameters to node for Hysteria
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1716,7 +1716,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["down"] >>= down;
             singleproxy["password"] >>= password;
             if (password.empty())
-                singleproxy["auth"] >>= password; 
+                singleproxy["auth"] >>= password;
             singleproxy["obfs"] >>= obfs;
             singleproxy["obfs-password"] >>= obfs_password;
             singleproxy["sni"] >>= sni;
@@ -1730,7 +1730,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["cwnd"] >>= cwnd;
             singleproxy["hop-interval"] >>= hop_interval;
             hysteria2Construct(node, group, ps, server, port, ports, up, down, password, obfs, obfs_password, sni, fingerprint, alpn, ca, ca_str, cwnd, hop_interval, udp, tfo, scv, underlying_proxy);
-            
+
             // Assign new parameters to node for Hysteria2
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1767,9 +1767,10 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             singleproxy["congestion-controller"] >>= congestion_controller;
             singleproxy["max-udp-relay-packet-size"] >>= max_udp_relay_packet_size;
             singleproxy["max-open-streams"] >>= max_open_streams;
+            singleproxy["sni"] >>= sni;
             singleproxy["fast-open"] >>= fast_open;
             tuicConstruct(node, group, ps, server, port, uuid, password, ip, heartbeat_interval, alpn, disable_sni, reduce_rtt, request_timeout, udp_relay_mode, congestion_controller, max_udp_relay_packet_size, max_open_streams, sni, fast_open, tfo, scv, underlying_proxy);
-            
+
             // Assign new parameters to node for TUIC
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
@@ -1792,7 +1793,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
                 singleproxy["alpn"] >>= alpn;
             singleproxy["fingerprint"] >>= fingerprint;
             anytlsConstruct(node, group, ps, server, port, password, sni, alpn, fingerprint, idle_session_check_interval, idle_session_timeout, min_idle_session, tfo, scv, underlying_proxy);
-            
+
             // Assign new parameters to node for AnyTLS
             node.IpVersion = ip_version;
             node.ClientFingerprint = client_fingerprint;
