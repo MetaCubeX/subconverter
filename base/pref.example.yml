@@ -95,7 +95,9 @@ rulesets:
 proxy_groups:
   custom_proxy_group:
 #  - {name: UrlTest, type: url-test, rule: [".*"], url: http://www.gstatic.com/generate_204, interval: 300, tolerance: 100, timeout: 5}
+#  - {name: LoadBalanceSticky, type: load-balance, rule: [".*"], url: http://www.gstatic.com/generate_204, interval: 300, timeout: 5, tolerance: 100, max-failed-times: 5, strategy: sticky-sessions}
 #  - {name: Proxy, type: select, rule: [".*"]}
+#  - {name: ProxyWithMaxFailed, type: select, rule: [".*"], max-failed-times: 5}
 #  - {name: group1, type: select, rule: ["!!GROUPID=0"]}
 #  - {name: v2ray, type: select, rule: ["!!GROUP=V2RayProvider"]}
 #  - {import: snippets/groups_forcerule.txt}
