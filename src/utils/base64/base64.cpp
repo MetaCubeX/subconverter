@@ -147,3 +147,24 @@ std::string urlSafeBase64Encode(const std::string &string_to_encode)
 {
     return urlSafeBase64Apply(base64Encode(string_to_encode));
 }
+bool isBase64(const std::string &string_to_check)
+{
+    if (string_to_check.empty())
+        return false;
+
+    string_size len = string_to_check.size();
+    if (len % 4 != 0)
+        return false;
+
+    for (string_size i = 0; i < len; i++)
+    {
+        unsigned char c = string_to_check[i];
+        if (base64_chars.find(c) == std::string::npos && c != '=')
+            return false;
+
+        if (c == '=' && i < len - 2)
+            return false;
+    }
+
+    return true;
+}
