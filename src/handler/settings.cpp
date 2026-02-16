@@ -181,7 +181,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
             dest.emplace_back("!!import:" + name);
             continue;
         }
-        std::string url = "http://www.gstatic.com/generate_204", interval = "300", tolerance, timeout;
+        std::string url = "http://www.gstatic.com/generate_204", interval = "300", tolerance, timeout, filter;
         object["name"] >>= name;
         object["type"] >>= type;
         tempArray.emplace_back(name);
@@ -190,6 +190,7 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
         object["interval"] >>= interval;
         object["tolerance"] >>= tolerance;
         object["timeout"] >>= timeout;
+        object["filter"] >>= filter;
         for(std::size_t j = 0; j < object["rule"].size(); j++)
             tempArray.emplace_back(safe_as<std::string>(object["rule"][j]));
         switch(hash_(type))
@@ -207,6 +208,12 @@ void readGroup(YAML::Node node, string_array &dest, bool scope_limit = true)
                 continue;
             tempArray.emplace_back(url);
             tempArray.emplace_back(interval + "," + timeout + "," + tolerance);
+        }
+        
+        if(!filter.empty())
+        {
+            // Add filter as a special rule with !!FILTER: prefix
+            tempArray.emplace_back("!!FILTER:" + filter);
         }
 
         std::string strLine = join(tempArray, "`");
