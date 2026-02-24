@@ -2310,6 +2310,43 @@ std::string proxyToLoon(std::vector<Proxy> &nodes, const std::string &base_conf,
             if(!x.SNI.empty())
                 proxy += ",sni=" + x.SNI;
             break;
+        case ProxyType::VLESS:
+        {
+            std::string vless_uuid = x.UUID.empty() ? x.UserId : x.UUID;
+            std::string vless_transport = transproto.empty() ? "tcp" : transproto;
+
+            proxy = "VLESS," + hostname + "," + port + ",\"" + vless_uuid + "\"";
+
+            if(vless_transport == "tcp" || vless_transport == "ws" || vless_transport == "http")
+                proxy += ",transport=" + vless_transport;
+            else
+                continue;
+
+            if(vless_transport == "ws" || vless_transport == "http")
+            {
+                if(!path.empty())
+                    proxy += ",path=" + path;
+                if(!host.empty())
+                    proxy += ",host=" + host;
+            }
+
+            proxy += ",over-tls=" + std::string(tlssecure ? "true" : "false");
+            if(!x.SNI.empty())
+                proxy += ",sni=" + x.SNI;
+            if(!scv.is_undef())
+                proxy += ",skip-cert-verify=" + std::string(scv.get() ? "true" : "false");
+
+            if(x.XTLS == 2)
+                proxy += ",flow=xtls-rprx-vision";
+            else if(!x.Flow.empty())
+                proxy += ",flow=" + x.Flow;
+
+            if(!x.PublicKey.empty())
+                proxy += ",public-key=\"" + x.PublicKey + "\"";
+            if(!x.ShortID.empty())
+                proxy += ",short-id=" + x.ShortID;
+            break;
+        }
         default:
             continue;
         }
