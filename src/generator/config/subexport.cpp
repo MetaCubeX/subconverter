@@ -697,9 +697,12 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
                 // Fallback for backward compatibility
                 singleproxy["flow"] = x.Flow;
             }
-            if (!x.PublicKey.empty() && !x.ShortID.empty()) {
+            // Export reality-opts if public-key is present (short-id is optional)
+            if (!x.PublicKey.empty()) {
                 singleproxy["reality-opts"]["public-key"] = x.PublicKey;
-                singleproxy["reality-opts"]["short-id"] = x.ShortID;
+                if (!x.ShortID.empty()) {
+                    singleproxy["reality-opts"]["short-id"] = x.ShortID;
+                }
                 if (!x.ClientFingerprint.empty()) {
                     singleproxy["client-fingerprint"] = x.ClientFingerprint;
                 } else if (!x.Fingerprint.empty()) {
@@ -2804,19 +2807,26 @@ void proxyToSingBox(std::vector<Proxy> &nodes, rapidjson::Document &json, std::v
                     tls.AddMember("alpn", alpn, allocator);
                 }
 
-                if (!x.PublicKey.empty() && !x.ShortID.empty()) {
+                // Export reality if public-key is present (short-id is optional)
+                if (!x.PublicKey.empty()) {
                     rapidjson::Value reality(rapidjson::kObjectType);
                     reality.AddMember("enabled", true, allocator);
-                    if (!x.PublicKey.empty())
-                        reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
+                    reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
                     if (!x.ShortID.empty())
                         reality.AddMember("short_id", rapidjson::StringRef(x.ShortID.c_str()), allocator);
                     tls.AddMember("reality", reality, allocator);
 
                     rapidjson::Value utls(rapidjson::kObjectType);
-                    utls.AddMember("enabled",true,allocator);
-                    std::array<std::string, 6> fingerprints = {"chrome", "firefox", "safari", "ios", "edge", "qq"};
-                    utls.AddMember("fingerprint", rapidjson::Value(fingerprints[rand() % fingerprints.size()].c_str(), allocator), allocator);
+                    utls.AddMember("enabled", true, allocator);
+                    // Use ClientFingerprint if available, otherwise use a random fingerprint
+                    if (!x.ClientFingerprint.empty()) {
+                        utls.AddMember("fingerprint", rapidjson::StringRef(x.ClientFingerprint.c_str()), allocator);
+                    } else if (!x.Fingerprint.empty()) {
+                        utls.AddMember("fingerprint", rapidjson::StringRef(x.Fingerprint.c_str()), allocator);
+                    } else {
+                        std::array<std::string, 6> fingerprints = {"chrome", "firefox", "safari", "ios", "edge", "qq"};
+                        utls.AddMember("fingerprint", rapidjson::Value(fingerprints[rand() % fingerprints.size()].c_str(), allocator), allocator);
+                    }
                     tls.AddMember("utls", utls, allocator);
                 }
 
