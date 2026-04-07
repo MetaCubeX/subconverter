@@ -86,6 +86,26 @@ void ssConstruct(Proxy &node, const std::string &group, const std::string &remar
     node.PluginOption = pluginopts;
 }
 
+bool parseSSUserInfo(const std::string &userinfo, std::string &method, std::string &password)
+{
+    std::string::size_type pos = userinfo.find(':');
+    if(pos != std::string::npos)
+    {
+        method = urlDecode(userinfo.substr(0, pos));
+        password = urlDecode(userinfo.substr(pos + 1));
+        return !method.empty() && !password.empty();
+    }
+
+    std::string decoded = urlSafeBase64Decode(userinfo);
+    pos = decoded.find(':');
+    if(pos == std::string::npos)
+        return false;
+
+    method = decoded.substr(0, pos);
+    password = decoded.substr(pos + 1);
+    return !method.empty() && !password.empty();
+}
+
 void socksConstruct(Proxy &node, const std::string &group, const std::string &remarks, const std::string &server, const std::string &port, const std::string &username, const std::string &password, tribool udp, tribool tfo, tribool scv, const std::string& underlying_proxy)
 {
     commonConstruct(node, ProxyType::SOCKS5, group, remarks, server, port, udp, tfo, scv, tribool(), underlying_proxy);
@@ -634,7 +654,7 @@ void explodeSS(std::string ss, Proxy &node)
     {
         if(regGetMatch(ss, "(\\S+?)@(\\S+):(\\d+)", 4, 0, &secret, &server, &port))
             return;
-        if(regGetMatch(urlSafeBase64Decode(secret), "(\\S+?):(\\S+)", 3, 0, &method, &password))
+        if(!parseSSUserInfo(secret, method, password))
             return;
     }
     else
