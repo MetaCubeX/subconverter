@@ -609,6 +609,9 @@ void explodeVmessConf(std::string content, std::vector<Proxy> &nodes)
 void explodeSS(std::string ss, Proxy &node)
 {
     std::string ps, password, method, server, port, plugins, plugin, pluginopts, addition, group = SS_DEFAULT_GROUP, secret;
+    auto parse_ss_userinfo = [&](const std::string &userinfo) {
+        return regGetMatch(userinfo, "(\\S+?):(\\S+)", 3, 0, &method, &password) == 0;
+    };
     //std::vector<std::string> args, secret;
     ss = replaceAllDistinct(ss.substr(5), "/?", "?");
     if(strFind(ss, "#"))
@@ -634,7 +637,7 @@ void explodeSS(std::string ss, Proxy &node)
     {
         if(regGetMatch(ss, "(\\S+?)@(\\S+):(\\d+)", 4, 0, &secret, &server, &port))
             return;
-        if(regGetMatch(urlSafeBase64Decode(secret), "(\\S+?):(\\S+)", 3, 0, &method, &password))
+        if(!parse_ss_userinfo(urlSafeBase64Decode(secret)) && !parse_ss_userinfo(urlDecode(secret)))
             return;
     }
     else
