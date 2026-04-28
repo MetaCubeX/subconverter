@@ -311,11 +311,12 @@ void anytlsConstruct(
         const std::string &idle_session_check_interval,
         const std::string &idle_session_timeout,
         const std::string &min_idle_session,
+        tribool udp,
         tribool tfo,
         tribool scv,
         const std::string &underlying_proxy
 ) {
-    commonConstruct(node, ProxyType::AnyTLS, group, remarks, server, port, tribool(), tfo, scv, tribool(), underlying_proxy);
+    commonConstruct(node, ProxyType::AnyTLS, group, remarks, server, port, udp, tfo, scv, tribool(), underlying_proxy);
         node.Password = password;
         node.SNI = sni;
         if (!alpn.empty()) {
@@ -1792,7 +1793,7 @@ void explodeClash(Node yamlnode, std::vector<Proxy> &nodes)
             else
                 singleproxy["alpn"] >>= alpn;
             singleproxy["fingerprint"] >>= fingerprint;
-            anytlsConstruct(node, group, ps, server, port, password, sni, alpn, fingerprint, idle_session_check_interval, idle_session_timeout, min_idle_session, tfo, scv, underlying_proxy);
+            anytlsConstruct(node, group, ps, server, port, password, sni, alpn, fingerprint, idle_session_check_interval, idle_session_timeout, min_idle_session, udp, tfo, scv, underlying_proxy);
 
             // Assign new parameters to node for AnyTLS
             node.IpVersion = ip_version;
@@ -2073,7 +2074,7 @@ void explodeTUIC(std::string tuic, Proxy &node) {
 
 void explodeStdAnyTLS(std::string anytls, Proxy &node) {
     std::string add, port, password, sni, alpn, fingerprint, remarks, addition,idle_session_check_interval,idle_session_timeout,min_idle_session;
-    tribool tfo, scv;
+    tribool udp, tfo, scv;
 
     anytls = anytls.substr(9);  // 去除 anytls://
     string_size pos;
@@ -2106,13 +2107,14 @@ void explodeStdAnyTLS(std::string anytls, Proxy &node) {
     sni = getUrlArg(addition, "peer");
     alpn = getUrlArg(addition, "alpn");
     fingerprint = urlDecode(getUrlArg(addition, "hpkp"));
+    udp = tribool(getUrlArg(addition, "udp"));
     tfo = tribool(getUrlArg(addition, "tfo"));
     scv = tribool(getUrlArg(addition, "insecure"));
 
     if (remarks.empty())
         remarks = add + ":" + port;
 
-    anytlsConstruct(node, "AnyTLS", remarks, add, port, password, sni, alpn, fingerprint, idle_session_check_interval, idle_session_timeout, min_idle_session,tfo, scv, "");
+    anytlsConstruct(node, "AnyTLS", remarks, add, port, password, sni, alpn, fingerprint, idle_session_check_interval, idle_session_timeout, min_idle_session, udp, tfo, scv, "");
 }
 
 void explodeAnyTLS(std::string anytls, Proxy &node) {
