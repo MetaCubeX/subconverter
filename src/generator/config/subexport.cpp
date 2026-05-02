@@ -616,7 +616,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             break;
         case ProxyType::VLESS:
             singleproxy["type"] = "vless";
-            singleproxy["tls"] = true;
+            singleproxy["tls"] = x.TLSSecure;
             // Output packet-encoding, xudp, packet-addr only if explicitly set
             if (!x.PacketEncoding.empty())
                 singleproxy["packet-encoding"] = x.PacketEncoding;
