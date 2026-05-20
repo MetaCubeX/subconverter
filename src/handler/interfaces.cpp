@@ -2,6 +2,7 @@
 #include <string>
 #include <mutex>
 #include <numeric>
+#include <regex>
 
 #include <yaml-cpp/yaml.h>
 
@@ -41,6 +42,12 @@ std::string parseProxy(const std::string &source)
     else if(source == "NONE")
         proxy = "";
     return proxy;
+}
+
+std::string quoteRealityShortID(const std::string &content)
+{
+    static const std::regex short_id_pattern(R"(short-id:\s*(?!["'])([^,}\]\s#]+))");
+    return std::regex_replace(content, short_id_pattern, R"(short-id: "$1")");
 }
 
 extern string_array ClashRuleTypes, SurgeRuleTypes, QuanXRuleTypes;
@@ -780,6 +787,8 @@ std::string subconverter(RESPONSE_CALLBACK_ARGS)
             }
             output_content = proxyToClash(nodes, base_content, lRulesetContent, lCustomProxyGroups, argTarget == "clashr", ext);
         }
+
+        output_content = quoteRealityShortID(output_content);
 
         if(argUpload)
             uploadGist(argTarget, argUploadPath, output_content, false);
