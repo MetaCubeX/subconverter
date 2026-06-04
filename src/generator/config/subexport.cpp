@@ -1118,6 +1118,15 @@ std::string proxyToSurge(std::vector<Proxy> &nodes, const std::string &base_conf
             if(!x.SNI.empty())
                 proxy += ",sni=" + x.SNI;
             break;
+        case ProxyType::AnyTLS:
+            if(surge_ver < 4)
+                continue;
+            proxy = "anytls, " + hostname + ", " + port + ", password=" + password;
+            if(!x.SNI.empty())
+                proxy += ", sni=" + x.SNI;
+            if(!scv.is_undef())
+                proxy += ", skip-cert-verify=" + std::string(scv.get() ? "true" : "false");
+            break;
         default:
             continue;
         }
