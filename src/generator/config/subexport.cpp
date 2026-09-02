@@ -230,6 +230,50 @@ void groupGenerate(const std::string &rule, std::vector<Proxy> &nodelist, string
     }
 }
 
+// 清洗 REALITY short-id：mihomo/sing-box 要求其为偶数长度、不超过 16 个字符（8 字节）
+// 的 hex 字符串，空串合法。订阅源偶见奇数长度（生成端丢失前导零）或含非 hex 字符的值，
+// 会让 mihomo 拒绝加载整个配置。兜底策略：奇数长度补前导零；仍不合法（非 hex 或超长）
+// 则丢弃该字段——空 short-id 合法，REALITY 节点仍可加载。
+static std::string sanitizeShortID(const std::string &short_id)
+{
+    if (short_id.empty())
+        return short_id;
+    auto is_hex = [](char c) { return ::isxdigit(static_cast<unsigned char>(c)); };
+    if (!std::all_of(short_id.begin(), short_id.end(), is_hex))
+    {
+        writeLog(0, "Dropped REALITY short-id '" + short_id + "' containing non-hex characters", LOG_LEVEL_INFO);
+        return "";
+    }
+    std::string sid = short_id;
+    if (sid.size() % 2)
+    {
+        sid = "0" + sid;
+        writeLog(0, "Padded odd-length REALITY short-id '" + short_id + "' to '" + sid + "'", LOG_LEVEL_INFO);
+    }
+    if (sid.size() > 16)
+    {
+        writeLog(0, "Dropped REALITY short-id '" + short_id + "' longer than 16 characters", LOG_LEVEL_INFO);
+        return "";
+    }
+    return sid;
+}
+
+// 判断字符串是否会被 go-yaml（mihomo / Clash Verge 的 YAML 解析器）误判为数值。
+// YAML 裸标量没有类型：形如 "29845e28"（科学计数法）、"012"（八进制）、"0x1f"（十六进制）、
+// ".inf" 的字符串会被解析成 int/float 而非字符串——short-id 因此 hex 校验失败
+// （即 "invalid REALITY short ID"），密码则被改写成数值表示导致认证失败。
+// yaml-cpp 发射端的判断与 go-yaml 不一致（如 "29845e28" 它认为可安全裸输出），
+// 无法依赖其自动加引号，必须在输出前主动识别并强制字符串化。
+static bool looksNumericToGoYaml(const std::string &value)
+{
+    return regMatch(value, R"(^[+-]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$)")
+        || regMatch(value, R"(^[-+]?0[xX][0-9a-fA-F]+$)")
+        || regMatch(value, R"(^[-+]?0[bB][01]+$)")
+        || regMatch(value, R"(^[-+]?0[oO][0-7]+$)")
+        || regMatch(value, R"(^[-+]?\.(inf|Inf|INF)$)")
+        || regMatch(value, R"(^\.(nan|NaN|NAN)$)");
+}
+
 void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGroupConfigs &extra_proxy_group, bool clashR, extra_settings &ext)
 {
     YAML::Node proxies, original_groups;
@@ -294,7 +338,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             singleproxy["type"] = "ss";
             singleproxy["cipher"] = x.EncryptMethod;
             singleproxy["password"] = x.Password;
-            if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit) && !x.Password.empty())
+            if(!x.Password.empty() && looksNumericToGoYaml(x.Password))
                 singleproxy["password"].SetTag("str");
             switch(hash_(x.Plugin))
             {
@@ -388,7 +432,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             singleproxy["type"] = "ssr";
             singleproxy["cipher"] = x.EncryptMethod == "none" ? "dummy" : x.EncryptMethod;
             singleproxy["password"] = x.Password;
-            if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit) && !x.Password.empty())
+            if(!x.Password.empty() && looksNumericToGoYaml(x.Password))
                 singleproxy["password"].SetTag("str");
             singleproxy["protocol"] = x.Protocol;
             singleproxy["obfs"] = x.OBFS;
@@ -410,7 +454,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             if(!x.Password.empty())
             {
                 singleproxy["password"] = x.Password;
-                if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit))
+                if(looksNumericToGoYaml(x.Password))
                     singleproxy["password"].SetTag("str");
             }
             if(!scv.is_undef())
@@ -424,7 +468,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             if(!x.Password.empty())
             {
                 singleproxy["password"] = x.Password;
-                if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit))
+                if(looksNumericToGoYaml(x.Password))
                     singleproxy["password"].SetTag("str");
             }
             singleproxy["tls"] = x.TLSSecure;
@@ -436,7 +480,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             singleproxy["password"] = x.Password;
             if(!x.Host.empty())
                 singleproxy["sni"] = x.Host;
-            if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit) && !x.Password.empty())
+            if(!x.Password.empty() && looksNumericToGoYaml(x.Password))
                 singleproxy["password"].SetTag("str");
             if(!scv.is_undef())
                 singleproxy["skip-cert-verify"] = scv.get();
@@ -470,7 +514,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
                 if(!x.Host.empty())
                     singleproxy["obfs-opts"]["host"] = x.Host;
             }
-            if(std::all_of(x.Password.begin(), x.Password.end(), ::isdigit) && !x.Password.empty())
+            if(!x.Password.empty() && looksNumericToGoYaml(x.Password))
                 singleproxy["password"].SetTag("str");
             break;
         case ProxyType::WireGuard:
@@ -697,9 +741,18 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
                 // Fallback for backward compatibility
                 singleproxy["flow"] = x.Flow;
             }
-            if (!x.PublicKey.empty() && !x.ShortID.empty()) {
+            // Export reality-opts if public-key is present (short-id is optional)
+            if (!x.PublicKey.empty()) {
                 singleproxy["reality-opts"]["public-key"] = x.PublicKey;
-                singleproxy["reality-opts"]["short-id"] = x.ShortID;
+                std::string short_id = sanitizeShortID(x.ShortID);
+                if (!short_id.empty()) {
+                    singleproxy["reality-opts"]["short-id"] = short_id;
+                    // short-id 一律加引号：数值形态（纯数字/科学计数法如 29845e28 等）
+                    // 会被下游 YAML 解析器误判为数值导致 "invalid REALITY short ID"；
+                    // 统一双引号也可消除歧义、便于排查。yaml-cpp 无法直接输出引号，
+                    // 先打 !<str> 标签，序列化后再由 convertStrTagsToQuotes() 转换
+                    singleproxy["reality-opts"]["short-id"].SetTag("str");
+                }
                 if (!x.ClientFingerprint.empty()) {
                     singleproxy["client-fingerprint"] = x.ClientFingerprint;
                 } else if (!x.Fingerprint.empty()) {
@@ -826,6 +879,17 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
         yamlnode["Proxy Group"] = original_groups;
 }
 
+// 将 YAML 输出中的 !<str> 本地标签转换为等价的双引号字符串。
+// yaml-cpp 的 Node API 无法强制为纯数字标量输出引号（否则会被下游 YAML 解析器推断为整数），
+// 只能先打标签再在最终文本上转换。双引号是所有下游（mihomo 内核、Clash Verge Rev 的
+// serde_yaml 合并链、PyYAML 等）兼容性最好的形式。
+static std::string convertStrTagsToQuotes(const std::string &yaml_content)
+{
+    // 捕获到下一个分隔符（flow 风格的 , 或 }、block 风格的行尾）为止；
+    // 只有数值形态的值会被打上 !<str> 标签，它们不会包含这些分隔符
+    return regReplace(yaml_content, R"(((?:short-id|password): )!<str> ([^,}\n]+))", R"re($1"$2")re");
+}
+
 std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf, std::vector<RulesetContent> &ruleset_content_array, const ProxyGroupConfigs &extra_proxy_group, bool clashR, extra_settings &ext)
 {
     YAML::Node yamlnode;
@@ -843,7 +907,7 @@ std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf
     proxyToClash(nodes, yamlnode, extra_proxy_group, clashR, ext);
 
     if(ext.nodelist)
-        return YAML::Dump(yamlnode);
+        return convertStrTagsToQuotes(YAML::Dump(yamlnode));
 
     /*
     if(ext.enable_rule_generator)
@@ -852,7 +916,7 @@ std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf
     return YAML::Dump(yamlnode);
     */
     if(!ext.enable_rule_generator)
-        return YAML::Dump(yamlnode);
+        return convertStrTagsToQuotes(YAML::Dump(yamlnode));
 
     if(!ext.managed_config_prefix.empty() || ext.clash_script)
     {
@@ -865,11 +929,11 @@ std::string proxyToClash(std::vector<Proxy> &nodes, const std::string &base_conf
         }
 
         renderClashScript(yamlnode, ruleset_content_array, ext.managed_config_prefix, ext.clash_script, ext.overwrite_original_rules, ext.clash_classical_ruleset);
-        return YAML::Dump(yamlnode);
+        return convertStrTagsToQuotes(YAML::Dump(yamlnode));
     }
 
     std::string output_content = rulesetToClashStr(yamlnode, ruleset_content_array, ext.overwrite_original_rules, ext.clash_new_field_name);
-    output_content.insert(0, YAML::Dump(yamlnode));
+    output_content.insert(0, convertStrTagsToQuotes(YAML::Dump(yamlnode)));
     //rulesetToClash(yamlnode, ruleset_content_array, ext.overwrite_original_rules, ext.clash_new_field_name);
     //std::string output_content = YAML::Dump(yamlnode);
 
@@ -2804,19 +2868,27 @@ void proxyToSingBox(std::vector<Proxy> &nodes, rapidjson::Document &json, std::v
                     tls.AddMember("alpn", alpn, allocator);
                 }
 
-                if (!x.PublicKey.empty() && !x.ShortID.empty()) {
+                // Export reality if public-key is present (short-id is optional)
+                if (!x.PublicKey.empty()) {
                     rapidjson::Value reality(rapidjson::kObjectType);
                     reality.AddMember("enabled", true, allocator);
-                    if (!x.PublicKey.empty())
-                        reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
-                    if (!x.ShortID.empty())
-                        reality.AddMember("short_id", rapidjson::StringRef(x.ShortID.c_str()), allocator);
+                    reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
+                    std::string short_id = sanitizeShortID(x.ShortID);
+                    if (!short_id.empty())
+                        reality.AddMember("short_id", rapidjson::Value(short_id.c_str(), allocator), allocator);
                     tls.AddMember("reality", reality, allocator);
 
                     rapidjson::Value utls(rapidjson::kObjectType);
-                    utls.AddMember("enabled",true,allocator);
-                    std::array<std::string, 6> fingerprints = {"chrome", "firefox", "safari", "ios", "edge", "qq"};
-                    utls.AddMember("fingerprint", rapidjson::Value(fingerprints[rand() % fingerprints.size()].c_str(), allocator), allocator);
+                    utls.AddMember("enabled", true, allocator);
+                    // Use ClientFingerprint if available, otherwise use a random fingerprint
+                    if (!x.ClientFingerprint.empty()) {
+                        utls.AddMember("fingerprint", rapidjson::StringRef(x.ClientFingerprint.c_str()), allocator);
+                    } else if (!x.Fingerprint.empty()) {
+                        utls.AddMember("fingerprint", rapidjson::StringRef(x.Fingerprint.c_str()), allocator);
+                    } else {
+                        std::array<std::string, 6> fingerprints = {"chrome", "firefox", "safari", "ios", "edge", "qq"};
+                        utls.AddMember("fingerprint", rapidjson::Value(fingerprints[rand() % fingerprints.size()].c_str(), allocator), allocator);
+                    }
                     tls.AddMember("utls", utls, allocator);
                 }
 
@@ -2850,14 +2922,30 @@ void proxyToSingBox(std::vector<Proxy> &nodes, rapidjson::Document &json, std::v
         }
         if (x.TLSSecure)
         {
-            rapidjson::Value tls(rapidjson::kObjectType);
-            tls.AddMember("enabled", true, allocator);
-            if (!x.ServerName.empty())
-                tls.AddMember("server_name", rapidjson::StringRef(x.ServerName.c_str()), allocator);
-            else if (!x.Host.empty())
-                tls.AddMember("server_name", rapidjson::StringRef(x.Host.c_str()), allocator);
-            tls.AddMember("insecure", buildBooleanValue(scv), allocator);
-            proxy.AddMember("tls", tls, allocator);
+            if (proxy.HasMember("tls"))
+            {
+                // 协议分支已构建完整 tls（含 reality/utls 等），仅补充缺失的 server_name，
+                // 避免重复 "tls" key 覆盖掉 REALITY 等配置（Go 的 JSON 解析取最后一个重复 key）
+                rapidjson::Value &tls = proxy["tls"];
+                if (tls.IsObject() && !tls.HasMember("server_name"))
+                {
+                    if (!x.ServerName.empty())
+                        tls.AddMember("server_name", rapidjson::StringRef(x.ServerName.c_str()), allocator);
+                    else if (!x.Host.empty())
+                        tls.AddMember("server_name", rapidjson::StringRef(x.Host.c_str()), allocator);
+                }
+            }
+            else
+            {
+                rapidjson::Value tls(rapidjson::kObjectType);
+                tls.AddMember("enabled", true, allocator);
+                if (!x.ServerName.empty())
+                    tls.AddMember("server_name", rapidjson::StringRef(x.ServerName.c_str()), allocator);
+                else if (!x.Host.empty())
+                    tls.AddMember("server_name", rapidjson::StringRef(x.Host.c_str()), allocator);
+                tls.AddMember("insecure", buildBooleanValue(scv), allocator);
+                proxy.AddMember("tls", tls, allocator);
+            }
         }
         if (!udp.is_undef() && !udp)
         {
