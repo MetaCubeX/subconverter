@@ -1,0 +1,6 @@
+# 测试用规则集（模拟 ACL4SSR LocalAreaNetwork.list 的形态）
+DOMAIN,router.asus.com
+DOMAIN-SUFFIX,local
+IP-CIDR,10.0.0.0/8,no-resolve
+IP-CIDR,127.0.0.0/8,no-resolve
+IP-CIDR6,::1/128,no-resolve

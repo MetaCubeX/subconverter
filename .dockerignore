@@ -1,4 +1,5 @@
 .git
+archive
 build
 *.log
 docker-compose.yml
