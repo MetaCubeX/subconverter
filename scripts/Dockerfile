@@ -1,5 +1,5 @@
 FROM alpine:3.16 AS builder
-LABEL maintainer="metacubex.official@gmail.com"
+LABEL maintainer="kazma233"
 ARG THREADS="4"
 ARG SHA=""
 
@@ -33,10 +33,11 @@ RUN set -xe && \
     git clone https://github.com/ToruNiina/toml11 --branch="v4.3.0" --depth=1 && \
     cd toml11 && \
     cmake -DCMAKE_CXX_STANDARD=11 . && \
-    make install -j $THREADS && \
-    cd .. && \
-    git clone https://github.com/metacubex/subconverter --depth=1 && \
-    cd subconverter && \
+    make install -j $THREADS
+
+# 直接使用构建上下文中的本地源码（含未合入上游的修改），而非从 GitHub 重新 clone
+COPY . /subconverter
+RUN cd /subconverter && \
     [ -n "$SHA" ] && sed -i 's/\(v[0-9]\.[0-9]\.[0-9]\)/\1-'"$SHA"'/' src/version.h;\
     python3 -m ensurepip && \
     python3 -m pip install gitpython && \
@@ -46,7 +47,7 @@ RUN set -xe && \
 
 # build final image
 FROM alpine:3.16
-LABEL maintainer="metacubex.official@gmail.com"
+LABEL maintainer="kazma233"
 
 RUN apk add --no-cache --virtual subconverter-deps pcre2 libcurl yaml-cpp
 

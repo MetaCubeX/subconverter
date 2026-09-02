@@ -1,0 +1,4 @@
+.git
+build
+*.log
+docker-compose.yml

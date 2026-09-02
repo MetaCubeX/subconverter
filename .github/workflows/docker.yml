@@ -9,102 +9,28 @@ concurrency:
   group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
-env:
-  REGISTRY_IMAGE: metacubex/subconverter
-  GHCR_IMAGE: ghcr.io/metacubex/subconverter
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  build-dockerhub:
+  build:
     strategy:
       matrix:
         include:
           - platform: linux/amd64
             os: ubuntu-latest
-          - platform: linux/386
-            os: ubuntu-latest
-          - platform: linux/arm/v7
-            os: ubuntu-24.04-arm
           - platform: linux/arm64
             os: ubuntu-24.04-arm
     runs-on: ${{ matrix.os }}
-    name: Build ${{ matrix.platform }} for Docker Hub
+    name: Build ${{ matrix.platform }}
     steps:
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV    
-
-      - name: Checkout base
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
-      - name: Docker login
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Get commit SHA
-        if: github.ref == 'refs/heads/master'
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Build and export
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          platforms: ${{ matrix.platform }}
-          context: scripts/
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            SHA=${{ steps.vars.outputs.sha_short }}
-          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Export digest
-        run: |
-          rm -rf /tmp/digests-dockerhub
-          mkdir -p /tmp/digests-dockerhub
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests-dockerhub/${digest#sha256:}"
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: digest-dockerhub-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests-dockerhub/*
-          if-no-files-found: error
-          retention-days: 1
-
-  build-ghcr:
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            os: ubuntu-latest
-          - platform: linux/386
-            os: ubuntu-latest
-          - platform: linux/arm/v7
-            os: ubuntu-24.04-arm
-          - platform: linux/arm64
-            os: ubuntu-24.04-arm
-    runs-on: ${{ matrix.os }}
-    name: Build ${{ matrix.platform }} for GHCR
-    steps:
-      - name: Prepare
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV    
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          # GHCR 镜像名必须小写
+          echo "GHCR_IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/subconverter" >> $GITHUB_ENV
 
       - name: Checkout base
         uses: actions/checkout@v4
@@ -122,6 +48,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -139,7 +66,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           platforms: ${{ matrix.platform }}
-          context: scripts/
+          context: .
+          file: scripts/Dockerfile
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             SHA=${{ steps.vars.outputs.sha_short }}
@@ -147,69 +75,36 @@ jobs:
 
       - name: Export digest
         run: |
-          rm -rf /tmp/digests-ghcr
-          mkdir -p /tmp/digests-ghcr
+          rm -rf /tmp/digests
+          mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests-ghcr/${digest#sha256:}"
+          touch "/tmp/digests/${digest#sha256:}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: digest-ghcr-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests-ghcr/*
+          name: digest-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  merge-dockerhub:
-    name: Merge Docker Hub
-    needs: build-dockerhub
+  merge:
+    name: Merge manifest list
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests-dockerhub
-          pattern: digest-dockerhub-*
+          path: /tmp/digests
+          pattern: digest-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
-      - name: Docker login
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Create manifest list and push
-        working-directory: /tmp/digests-dockerhub
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
-  merge-ghcr:
-    name: Merge GHCR
-    needs: build-ghcr
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@v4
-        with:
-          path: /tmp/digests-ghcr
-          pattern: digest-ghcr-*
-          merge-multiple: true
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Prepare image name
+        run: echo "GHCR_IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/subconverter" >> $GITHUB_ENV
 
       - name: Docker meta
         id: meta
@@ -219,6 +114,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -227,10 +123,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create manifest list and push
-        working-directory: /tmp/digests-ghcr
+        working-directory: /tmp/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
+
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:${{ steps.meta.outputs.version }}
